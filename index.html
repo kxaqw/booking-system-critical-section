@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking System - Critical Section Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .demo-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .demo-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 14px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .control-group input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 200px;
+        }
+
+        button {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .seats-display {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .seat-counter {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .seat-counter h3 {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .seat-counter .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .logs {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-left: 3px solid transparent;
+        }
+
+        .log-entry.success {
+            color: #00ff00;
+            border-left-color: #00ff00;
+        }
+
+        .log-entry.error {
+            color: #ff6b6b;
+            border-left-color: #ff6b6b;
+        }
+
+        .log-entry.warning {
+            color: #ffd93d;
+            border-left-color: #ffd93d;
+        }
+
+        .log-entry.info {
+            color: #6bcbff;
+            border-left-color: #6bcbff;
+        }
+
+        .bookings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .bookings-table th,
+        .bookings-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .bookings-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        .bookings-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-confirmed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-overbooked {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 968px) {
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛫 Airline Booking System - Critical Section Demonstration</h1>
+            <p>Based on Centrum Air Overbooking Incident (26 September, 2024)</p>
+            <p><strong>Visualizing Race Conditions and Synchronization</strong></p>
+        </div>
+
+        <div class="comparison">
+            <!-- UNSAFE SYSTEM -->
+            <div class="demo-section">
+                <div class="demo-title">❌ Unsafe System (Without Protection)</div>
+                
+                <div class="alert alert-danger">
+                    ⚠️ This system has NO synchronization - Race conditions will occur!
+                </div>
+
+                <div class="seats-display">
+                    <div class="seat-counter">
+                        <h3>Total Seats</h3>
+                        <div class="number" id="unsafe-total">10</div>
+                    </div>
+                    <div class="seat-counter">
+                        <h3>Available Seats</h3>
+                        <div class="number" id="unsafe-available">10</div>
+                    </div>
+                    <div class="seat-counter">
+                        <h3>Bookings Made</h3>
+                        <div class="number" id="unsafe-bookings">0</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Total Seats</label>
+                        <input type="number" id="unsafe-seats" value="10" min="1" max="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Concurrent Users</label>
+                        <input type="number" id="unsafe-users" value="6" min="1" max="20">
+                    </div>
+                    <button onclick="runUnsafeDemo()">🚀 Start Unsafe Booking</button>
+                    <button onclick="resetUnsafe()">🔄 Reset</button>
+                </div>
+
+                <div class="logs" id="unsafe-logs"></div>
+
+                <h3>Bookings:</h3>
+                <table class="bookings-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Passenger</th>
+                            <th>Tickets</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unsafe-bookings-table"></tbody>
+                </table>
+            </div>
+
+            <!-- SAFE SYSTEM -->
+            <div class="demo-section">
+                <div class="demo-title">✅ Safe System (With Mutex Protection)</div>
+                
+                <div class="alert alert-success">
+                    ✓ This system uses MUTEX synchronization - No race conditions!
+                </div>
+
+                <div class="seats-display">
+                    <div class="seat-counter">
+                        <h3>Total Seats</h3>
+                        <div class="number" id="safe-total">10</div>
+                    </div>
+                    <div class="seat-counter">
+                        <h3>Available Seats</h3>
+                        <div class="number" id="safe-available">10</div>
+                    </div>
+                    <div class="seat-counter">
+                        <h3>Bookings Made</h3>
+                        <div class="number" id="safe-bookings">0</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Total Seats</label>
+                        <input type="number" id="safe-seats" value="10" min="1" max="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Concurrent Users</label>
+                        <input type="number" id="safe-users" value="6" min="1" max="20">
+                    </div>
+                    <button onclick="runSafeDemo()">🚀 Start Safe Booking</button>
+                    <button onclick="resetSafe()">🔄 Reset</button>
+                </div>
+
+                <div class="logs" id="safe-logs"></div>
+
+                <h3>Bookings:</h3>
+                <table class="bookings-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Passenger</th>
+                            <th>Tickets</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="safe-bookings-table"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated booking systems
+        class BookingSystem {
+            constructor(totalSeats, useMutex = false) {
+                this.totalSeats = totalSeats;
+                this.availableSeats = totalSeats;
+                this.bookings = [];
+                this.bookingId = 0;
+                this.useMutex = useMutex;
+                this.mutex = false; // Simple mutex flag
+            }
+
+            async acquireLock() {
+                while (this.mutex) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+                this.mutex = true;
+            }
+
+            releaseLock() {
+                this.mutex = false;
+            }
+
+            async bookTicket(passengerName, numTickets, logCallback) {
+                logCallback(`info`, `${passengerName} requesting ${numTickets} ticket(s)...`);
+
+                if (this.useMutex) {
+                    await this.acquireLock();
+                }
+
+                // Simulate network delay
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
+
+                const currentAvailable = this.availableSeats;
+                
+                // Another delay (where race condition occurs in unsafe version)
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
+
+                if (currentAvailable >= numTickets) {
+                    logCallback(`info`, `${passengerName} sees ${currentAvailable} seats available`);
+                    
+                    this.availableSeats -= numTickets;
+                    this.bookingId++;
+
+                    const booking = {
+                        id: this.bookingId,
+                        passenger: passengerName,
+                        tickets: numTickets,
+                        status: 'CONFIRMED'
+                    };
+                    this.bookings.push(booking);
+
+                    logCallback(`success`, `✓ ${passengerName} BOOKED ${numTickets} ticket(s). Remaining: ${this.availableSeats}`);
+                    
+                    if (this.useMutex) {
+                        this.releaseLock();
+                    }
+                    return true;
+                } else {
+                    logCallback(`error`, `✗ ${passengerName} - Not enough seats!`);
+                    if (this.useMutex) {
+                        this.releaseLock();
+                    }
+                    return false;
+                }
+            }
+        }
+
+        let unsafeSystem = null;
+        let safeSystem = null;
+
+        function addLog(elementId, type, message) {
+            const logsDiv = document.getElementById(elementId);
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function updateDisplay(prefix, system) {
+            document.getElementById(`${prefix}-total`).textContent = system.totalSeats;
+            document.getElementById(`${prefix}-available`).textContent = system.availableSeats;
+            document.getElementById(`${prefix}-bookings`).textContent = system.bookings.length;
+
+            const tbody = document.getElementById(`${prefix}-bookings-table`);
+            tbody.innerHTML = '';
+            
+            const totalBooked = system.bookings.reduce((sum, b) => sum + b.tickets, 0);
+            const isOverbooked = totalBooked > system.totalSeats;
+
+            system.bookings.forEach(booking => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${booking.id}</td>
+                    <td>${booking.passenger}</td>
+                    <td>${booking.tickets}</td>
+                    <td><span class="status-badge ${isOverbooked ? 'status-overbooked' : 'status-confirmed'}">${booking.status}</span></td>
+                `;
+            });
+
+            if (isOverbooked) {
+                addLog(`${prefix}-logs`, 'warning', `⚠️ OVERBOOKING DETECTED! ${totalBooked - system.totalSeats} extra tickets sold!`);
+            }
+        }
+
+        async function runUnsafeDemo() {
+            const totalSeats = parseInt(document.getElementById('unsafe-seats').value);
+            const numUsers = parseInt(document.getElementById('unsafe-users').value);
+
+            unsafeSystem = new BookingSystem(totalSeats, false);
+            document.getElementById('unsafe-logs').innerHTML = '';
+            
+            addLog('unsafe-logs', 'warning', '⚠️ Starting UNSAFE booking system (no synchronization)...');
+
+            const passengers = [];
+            for (let i = 0; i < numUsers; i++) {
+                passengers.push({
+                    name: `Passenger_${String.fromCharCode(65 + i)}`,
+                    tickets: Math.floor(Math.random() * 3) + 1
+                });
+            }
+
+            const promises = passengers.map(p => 
+                unsafeSystem.bookTicket(p.name, p.tickets, (type, msg) => addLog('unsafe-logs', type, msg))
+            );
+
+            await Promise.all(promises);
+
+            updateDisplay('unsafe', unsafeSystem);
+            addLog('unsafe-logs', 'info', '--- Booking process completed ---');
+        }
+
+        async function runSafeDemo() {
+            const totalSeats = parseInt(document.getElementById('safe-seats').value);
+            const numUsers = parseInt(document.getElementById('safe-users').value);
+
+            safeSystem = new BookingSystem(totalSeats, true);
+            document.getElementById('safe-logs').innerHTML = '';
+            
+            addLog('safe-logs', 'success', '✓ Starting SAFE booking system (with mutex)...');
+
+            const passengers = [];
+            for (let i = 0; i < numUsers; i++) {
+                passengers.push({
+                    name: `Passenger_${String.fromCharCode(65 + i)}`,
+                    tickets: Math.floor(Math.random() * 3) + 1
+                });
+            }
+
+            const promises = passengers.map(p => 
+                safeSystem.bookTicket(p.name, p.tickets, (type, msg) => addLog('safe-logs', type, msg))
+            );
+
+            await Promise.all(promises);
+
+            updateDisplay('safe', safeSystem);
+            addLog('safe-logs', 'info', '--- Booking process completed ---');
+        }
+
+        function resetUnsafe() {
+            const totalSeats = parseInt(document.getElementById('unsafe-seats').value);
+            unsafeSystem = new BookingSystem(totalSeats, false);
+            document.getElementById('unsafe-logs').innerHTML = '';
+            document.getElementById('unsafe-bookings-table').innerHTML = '';
+            updateDisplay('unsafe', unsafeSystem);
+            addLog('unsafe-logs', 'info', 'System reset');
+        }
+
+        function resetSafe() {
+            const totalSeats = parseInt(document.getElementById('safe-seats').value);
+            safeSystem = new BookingSystem(totalSeats, true);
+            document.getElementById('safe-logs').innerHTML = '';
+            document.getElementById('safe-bookings-table').innerHTML = '';
+            updateDisplay('safe', safeSystem);
+            addLog('safe-logs', 'info', 'System reset');
+        }
+
+        // Initialize on page load
+        window.onload = () => {
+            resetUnsafe();
+            resetSafe();
+        };
+    </script>
+</body>
+</html>
