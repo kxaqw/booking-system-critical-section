@@ -338,12 +338,3 @@ system = UnsafeBookingSystem(total_seats=5)  # Fewer seats
 ```bash
 python3 -m http.server 8000
 ```
-
----
-
-
----
-
-**Good luck with your project! 🚀**
-
-If you understand critical sections, race conditions, and synchronization, you understand one of the most important concepts in Operating Systems!
